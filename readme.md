@@ -2,6 +2,10 @@
 
 This Go application provides a command-line interface (CLI) for managing objects in an Amazon S3 bucket. Users can upload, download, delete, and list objects in a specified S3 bucket.
 
+## Preview
+
+<img width="1008" alt="image" src="https://github.com/user-attachments/assets/071630de-9af3-4d4d-a9ab-97e50064f85f">
+
 ## Features
 
 - List contents of an S3 bucket
