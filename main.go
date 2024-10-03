@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -78,7 +79,37 @@ func listS3BucketContents(ctx context.Context, client *s3.Client, bucketName str
 	return nil
 }
 
-// menu handles user input for deleting objects or exiting
+// downloadS3Object downloads the specified object from the S3 bucket
+func downloadS3Object(ctx context.Context, client *s3.Client, bucketName, objectKey string) error {
+	output, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &bucketName,
+		Key:    &objectKey,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to download object: %v", err)
+	}
+	defer output.Body.Close()
+
+	// Create a file to save the downloaded object
+	file, err := os.Create(objectKey)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	// Copy the object data to the file
+	_, err = io.Copy(file, output.Body)
+	if err != nil {
+		return fmt.Errorf("failed to save object to file: %v", err)
+	}
+
+	// Notification of successful download
+	fmt.Printf("Successfully downloaded object: %s\n", objectKey)
+
+	return nil
+}
+
+// menu handles user input for deleting or downloading objects or exiting
 func menu(ctx context.Context, client *s3.Client, bucketName string) {
 	for {
 		err := listS3BucketContents(ctx, client, bucketName)
@@ -87,7 +118,7 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 		}
 
 		var action string
-		fmt.Println("Enter 'delete' to delete an object or 'exit' to exit:")
+		fmt.Println("Enter 'delete' to delete an object, 'download' to download an object, or 'exit' to exit:")
 		fmt.Scanln(&action)
 
 		if action == "exit" {
@@ -99,6 +130,14 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 			err := deleteS3Object(ctx, client, bucketName, objectKey)
 			if err != nil {
 				log.Printf("Error deleting object: %v", err)
+			}
+		} else if action == "download" {
+			var objectKey string
+			fmt.Println("Enter the object key to download:")
+			fmt.Scanln(&objectKey)
+			err := downloadS3Object(ctx, client, bucketName, objectKey)
+			if err != nil {
+				log.Printf("Error downloading object: %v", err)
 			}
 		} else {
 			fmt.Println("Invalid command. Please try again.")
