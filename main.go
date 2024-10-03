@@ -121,9 +121,10 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 		fmt.Println("Enter 'delete' to delete an object, 'download' to download an object, or 'exit' to exit:")
 		fmt.Scanln(&action)
 
-		if action == "exit" {
-			break
-		} else if action == "delete" {
+		switch action {
+		case "exit":
+			return
+		case "delete":
 			var objectKey string
 			fmt.Println("Enter the object key to delete:")
 			fmt.Scanln(&objectKey)
@@ -131,7 +132,7 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 			if err != nil {
 				log.Printf("Error deleting object: %v", err)
 			}
-		} else if action == "download" {
+		case "download":
 			var objectKey string
 			fmt.Println("Enter the object key to download:")
 			fmt.Scanln(&objectKey)
@@ -139,7 +140,7 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 			if err != nil {
 				log.Printf("Error downloading object: %v", err)
 			}
-		} else {
+		default:
 			fmt.Println("Invalid command. Please try again.")
 		}
 	}
