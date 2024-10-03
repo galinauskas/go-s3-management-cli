@@ -7,6 +7,9 @@ import (
 	"log"
 	"os"
 
+	"path/filepath"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -109,7 +112,32 @@ func downloadS3Object(ctx context.Context, client *s3.Client, bucketName, object
 	return nil
 }
 
-// menu handles user input for deleting or downloading objects or exiting
+// uploadS3Object uploads the specified file to the S3 bucket
+func uploadS3Object(ctx context.Context, client *s3.Client, bucketName, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	input := &s3.PutObjectInput{
+		Bucket: &bucketName,
+		Key:    aws.String(filepath.Base(filePath)), // Use only the file name as the object key
+		Body:   file,
+	}
+
+	_, err = client.PutObject(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to upload object: %v", err)
+	}
+
+	// Notification of successful upload
+	fmt.Printf("Successfully uploaded object: %s\n", filepath.Base(filePath))
+
+	return nil
+}
+
+// menu handles user input for deleting, downloading, or uploading objects or exiting
 func menu(ctx context.Context, client *s3.Client, bucketName string) {
 	for {
 		err := listS3BucketContents(ctx, client, bucketName)
@@ -118,7 +146,7 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 		}
 
 		var action string
-		fmt.Println("Enter 'delete' to delete an object, 'download' to download an object, or 'exit' to exit:")
+		fmt.Println("Enter 'delete' to delete an object, 'download' to download an object, 'upload' to upload a file, or 'exit' to exit:")
 		fmt.Scanln(&action)
 
 		switch action {
@@ -139,6 +167,14 @@ func menu(ctx context.Context, client *s3.Client, bucketName string) {
 			err := downloadS3Object(ctx, client, bucketName, objectKey)
 			if err != nil {
 				log.Printf("Error downloading object: %v", err)
+			}
+		case "upload":
+			var filePath string
+			fmt.Println("Enter the file path to upload:")
+			fmt.Scanln(&filePath)
+			err := uploadS3Object(ctx, client, bucketName, filePath)
+			if err != nil {
+				log.Printf("Error uploading object: %v", err)
 			}
 		default:
 			fmt.Println("Invalid command. Please try again.")
