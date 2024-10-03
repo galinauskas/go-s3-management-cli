@@ -75,8 +75,10 @@ func listS3BucketContents(ctx context.Context, client *s3.Client, bucketName str
 		os.Exit(0) // Exit if no objects are found
 	}
 
+	// Show file size in MB
 	for _, obj := range result.Contents {
-		fmt.Printf("Key: %s, Size: %d bytes\n", *obj.Key, obj.Size)
+		sizeInMB := float64(*obj.Size) / (1024 * 1024)
+		fmt.Printf("Key: %s, Size: %.2f MB\n", *obj.Key, sizeInMB)
 	}
 
 	return nil
