@@ -37,6 +37,24 @@ func initS3Client(ctx context.Context) (*s3.Client, error) {
 	return s3.NewFromConfig(cfg), nil
 }
 
+// deleteS3Object deletes the specified object from the S3 bucket
+func deleteS3Object(ctx context.Context, client *s3.Client, bucketName, objectKey string) error {
+	input := &s3.DeleteObjectInput{
+		Bucket: &bucketName,
+		Key:    &objectKey,
+	}
+
+	_, err := client.DeleteObject(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to delete object: %v", err)
+	}
+
+	// Notification of successful deletion
+	fmt.Printf("Successfully deleted object: %s\n", objectKey)
+
+	return nil
+}
+
 // listS3BucketContents lists the contents of the specified S3 bucket
 func listS3BucketContents(ctx context.Context, client *s3.Client, bucketName string) error {
 	input := &s3.ListObjectsV2Input{
@@ -48,11 +66,44 @@ func listS3BucketContents(ctx context.Context, client *s3.Client, bucketName str
 		return fmt.Errorf("failed to list objects: %v", err)
 	}
 
+	if len(result.Contents) == 0 {
+		fmt.Println("No objects found in the bucket.")
+		os.Exit(0) // Exit if no objects are found
+	}
+
 	for _, obj := range result.Contents {
 		fmt.Printf("Key: %s, Size: %d bytes\n", *obj.Key, obj.Size)
 	}
 
 	return nil
+}
+
+// menu handles user input for deleting objects or exiting
+func menu(ctx context.Context, client *s3.Client, bucketName string) {
+	for {
+		err := listS3BucketContents(ctx, client, bucketName)
+		if err != nil {
+			log.Fatalf("Failed to list bucket contents: %v", err)
+		}
+
+		var action string
+		fmt.Println("Enter 'delete' to delete an object or 'exit' to exit:")
+		fmt.Scanln(&action)
+
+		if action == "exit" {
+			break
+		} else if action == "delete" {
+			var objectKey string
+			fmt.Println("Enter the object key to delete:")
+			fmt.Scanln(&objectKey)
+			err := deleteS3Object(ctx, client, bucketName, objectKey)
+			if err != nil {
+				log.Printf("Error deleting object: %v", err)
+			}
+		} else {
+			fmt.Println("Invalid command. Please try again.")
+		}
+	}
 }
 
 func main() {
@@ -69,8 +120,5 @@ func main() {
 		log.Fatalf("Failed to initialize S3 client: %v", err)
 	}
 
-	err = listS3BucketContents(ctx, client, bucketName)
-	if err != nil {
-		log.Fatalf("Failed to list bucket contents: %v", err)
-	}
+	menu(ctx, client, bucketName)
 }
